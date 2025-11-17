@@ -1,8 +1,5 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Select from "react-select";
-
-const CLIENT_ID =
-  "995432520839-ihrvku3700816ddu6rs96ekovire3cce.apps.googleusercontent.com";
 
 const SHEET_ID = "16RKXKDq_uZD6AbA9PX868hdNRNrIu_AB9ufXR3EzElQ";
 const SHEET_NAME = "Acreditación";
@@ -16,13 +13,9 @@ function ahoraSantiago() {
   return new Date().toLocaleString("es-CL", { timeZone: "America/Santiago" });
 }
 
-export default function AcreditacionForm() {
-  const [token, setToken] = useState(null);
-  const tokenClientRef = useRef(null);
+export default function AcreditacionForm({ token, onLogin, onLogout, userInfo }) {
   const [loading, setLoading] = useState(false);
   const [mensaje, setMensaje] = useState("");
-
-  const [userInfo, setUserInfo] = useState(null);
 
   const [selectedNombreEncargado, setSelectedNombreEncargado] =
     useState(null);
@@ -54,28 +47,19 @@ export default function AcreditacionForm() {
     form.acreditaVisita && form.acreditaVisita.value
   );
 
-  // Inicializa Google Identity Services
+  // Cuando cambia el token
   useEffect(() => {
-    if (!window.google) return;
-
-    tokenClientRef.current = window.google.accounts.oauth2.initTokenClient({
-      client_id: CLIENT_ID,
-      scope:
-        "https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile openid",
-      callback: async (resp) => {
-        if (resp && resp.access_token) {
-          setToken(resp.access_token);
-          setMensaje("");
-          await fetchUserInfo(resp.access_token);
-        }
-      },
-    });
-  }, []);
-
-  // Cuando hay token, cargamos los registros desde la hoja
-  useEffect(() => {
-    if (!token) return;
-    loadRegistros(token);
+    if (!token) {
+      // Si no hay token, limpiamos todo
+      setRegistros([]);
+      setSelectedIglesia(null);
+      setSelectedNombreEncargado(null);
+      setRegistroSeleccionado(null);
+      limpiarFormulario(false);
+      return;
+    }
+    loadRegistros();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token]);
 
   // Autollenar fecha/hora acreditación cuando pasa a "Sí"
@@ -106,39 +90,24 @@ export default function AcreditacionForm() {
     return Array.from(set).map((n) => ({ value: n, label: n }));
   }, [registros, selectedIglesia]);
 
-  async function fetchUserInfo(accessToken) {
-    try {
-      const res = await fetch("https://www.googleapis.com/oauth2/v3/userinfo", {
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-        },
-      });
-      if (!res.ok) return;
-      const data = await res.json();
-      setUserInfo({
-        name: data.name || "",
-        email: data.email || "",
-      });
-    } catch (err) {
-      console.error("Error al obtener userinfo", err);
-    }
-  }
-
   // Carga registros y guarda número de fila (rowNumber)
-  async function loadRegistros(accessToken) {
+  async function loadRegistros() {
+    if (!token) return;
+
     try {
       const range = encodeURIComponent(`${SHEET_NAME}!A2:L`);
       const url = `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/${range}`;
 
       const res = await fetch(url, {
         headers: {
-          Authorization: `Bearer ${accessToken}`,
+          Authorization: `Bearer ${token}`,
         },
       });
 
       if (!res.ok) {
         const txt = await res.text();
         console.error("Error al leer registros:", res.status, txt);
+        setMensaje("No se pudieron cargar los registros de acreditación.");
         return;
       }
 
@@ -163,41 +132,10 @@ export default function AcreditacionForm() {
       }));
 
       setRegistros(mapped);
+      setMensaje("");
     } catch (err) {
       console.error("Error al cargar registros:", err);
-    }
-  }
-
-  function handleLogin() {
-    if (!tokenClientRef.current) {
-      setMensaje(
-        "No se pudo inicializar Google. Revisa el script de GIS en index.html."
-      );
-      return;
-    }
-    tokenClientRef.current.requestAccessToken();
-  }
-
-  function handleLogout() {
-    setToken(null);
-    setUserInfo(null);
-    setMensaje("");
-    setRegistros([]);
-    setSelectedIglesia(null);
-    setSelectedNombreEncargado(null);
-    setRegistroSeleccionado(null);
-    limpiarFormulario();
-
-    if (
-      window.google &&
-      window.google.accounts &&
-      window.google.accounts.oauth2
-    ) {
-      try {
-        window.google.accounts.oauth2.revoke(CLIENT_ID, () => {});
-      } catch (e) {
-        console.warn("No se pudo revocar el token:", e);
-      }
+      setMensaje("Ocurrió un error al cargar los registros de acreditación.");
     }
   }
 
@@ -238,7 +176,7 @@ export default function AcreditacionForm() {
 
     if (!opt) {
       setRegistroSeleccionado(null);
-      limpiarFormulario();
+      limpiarFormulario(true);
       return;
     }
 
@@ -247,8 +185,7 @@ export default function AcreditacionForm() {
 
     if (selectedIglesia) {
       row = registros.find(
-        (r) =>
-          r.nombre === nombre && r.iglesia === selectedIglesia.value
+        (r) => r.nombre === nombre && r.iglesia === selectedIglesia.value
       );
     }
 
@@ -290,15 +227,21 @@ export default function AcreditacionForm() {
     e.preventDefault();
 
     if (!token) {
-      setMensaje("Debes iniciar sesión con Google antes de guardar.");
+      setMensaje(
+        "Debes iniciar sesión con Google antes de guardar."
+      );
       return;
     }
     if (!registroSeleccionado) {
-      setMensaje("Debes seleccionar un registro desde los filtros antes de guardar.");
+      setMensaje(
+        "Debes seleccionar un registro desde los filtros antes de guardar."
+      );
       return;
     }
     if (!camposObligatoriosOk) {
-      setMensaje("Debes seleccionar una opción en '¿Se Acredita Visita?' antes de guardar.");
+      setMensaje(
+        "Debes seleccionar una opción en '¿Se Acredita Visita?' antes de guardar."
+      );
       return;
     }
 
@@ -334,7 +277,9 @@ export default function AcreditacionForm() {
         ],
       ];
 
-      const range = encodeURIComponent(`${SHEET_NAME}!A${rowNumber}:L${rowNumber}`);
+      const range = encodeURIComponent(
+        `${SHEET_NAME}!A${rowNumber}:L${rowNumber}`
+      );
       const url = `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/${range}?valueInputOption=USER_ENTERED`;
 
       const res = await fetch(url, {
@@ -353,9 +298,7 @@ export default function AcreditacionForm() {
 
       // Actualizamos también en memoria para que los filtros queden al día
       setRegistros((prev) =>
-        prev.map((r) =>
-          r.rowNumber === rowNumber ? updatedRow : r
-        )
+        prev.map((r) => (r.rowNumber === rowNumber ? updatedRow : r))
       );
       setRegistroSeleccionado(updatedRow);
 
@@ -370,7 +313,12 @@ export default function AcreditacionForm() {
     }
   }
 
-  function limpiarFormulario() {
+  function limpiarFormulario(resetSeleccion = true) {
+    if (resetSeleccion) {
+      setSelectedNombreEncargado(null);
+      setSelectedIglesia(null);
+    }
+
     setForm({
       nombre: "",
       iglesia: "",
@@ -396,47 +344,42 @@ export default function AcreditacionForm() {
         </p>
 
         <div className="google-login-wrapper">
+          {!token ? (
+            <button
+              type="button"
+              className="google-login-btn"
+              onClick={onLogin}
+            >
+              <img
+                src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg"
+                alt="Google"
+                className="google-icon"
+              />
+              <span>Continuar con Google</span>
+            </button>
+          ) : (
+            <div className="google-session-bar">
+              <div className="google-session-info">
+                <span className="google-session-title">
+                  Sesión iniciada como
+                </span>
+                <span className="google-session-email">
+                  {userInfo?.email || "Usuario autenticado"}
+                </span>
+              </div>
 
-
-       {!token ? (
-  <button
-    type="button"
-    className="google-login-btn"
-    onClick={handleLogin}
-  >
-    <img
-      src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg"
-      alt="Google"
-      className="google-icon"
-    />
-    <span>Continuar con Google</span>
-  </button>
-) : (
-  <div className="google-session-bar">
-    <div className="google-session-info">
-      <span className="google-session-title">Sesión iniciada como</span>
-      <span className="google-session-email">{userInfo?.email}</span>
-    </div>
-    <button
-      type="button"
-      className="btn btn-secondary google-logout-btn"
-      onClick={handleLogout}
-    >
-      Cerrar sesión
-    </button>
-  </div>
-)}
-
-
-
-
+              <button className="logout-btn" onClick={onLogout}>
+                Cerrar sesión
+              </button>
+            </div>
+          )}
         </div>
       </div>
 
       {/* FILTROS */}
       <div className="filters-row">
         <div className="filter-group">
-          <label>Buscar por Nombre Encargado</label>
+          <label>Buscar por Nombre</label>
           <Select
             value={selectedNombreEncargado}
             onChange={handleChangeNombreEncargado}
@@ -580,7 +523,6 @@ export default function AcreditacionForm() {
 
         {/* Botones */}
         <div className="form-actions">
-      
           <button
             type="submit"
             className="btn btn-primary"
