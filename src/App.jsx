@@ -13,32 +13,52 @@ export default function App() {
 
   const tokenClientRef = useRef(null);
 
-  // Inicializar Google Identity una sola vez
+  // 🔵 Inicializar Google Identity Services esperando a que cargue el script
   useEffect(() => {
-    if (!window.google) return;
+    function initializeGSI() {
+      if (
+        window.google &&
+        window.google.accounts &&
+        window.google.accounts.oauth2
+      ) {
+        tokenClientRef.current = window.google.accounts.oauth2.initTokenClient({
+          client_id: CLIENT_ID,
+          scope:
+            "https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile openid",
+          callback: async (resp) => {
+            if (resp?.access_token) {
+              const accessToken = resp.access_token;
 
-    tokenClientRef.current = window.google.accounts.oauth2.initTokenClient({
-      client_id: CLIENT_ID,
-      scope:
-        "https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile openid",
-      callback: async (resp) => {
-        if (resp?.access_token) {
-          const accessToken = resp.access_token;
+              const expiresAt = Date.now() + 120 * 60 * 1000; // 2 horas
+              localStorage.setItem(
+                "googleSession",
+                JSON.stringify({ token: accessToken, expiresAt })
+              );
 
-          const expiresAt = Date.now() + 120 * 60 * 1000; // 2 HORAS
-          localStorage.setItem(
-            "googleSession",
-            JSON.stringify({ token: accessToken, expiresAt })
-          );
+              setToken(accessToken);
+              await fetchUserInfo(accessToken);
+            }
+          },
+        });
 
-          setToken(accessToken);
-          await fetchUserInfo(accessToken);
-        }
-      },
-    });
+        console.log("GSI cargado correctamente.");
+        return true;
+      }
+      return false;
+    }
+
+    // 1. Intento inmediato
+    if (initializeGSI()) return;
+
+    // 2. Intento cada 200ms hasta que el script cargue
+    const interval = setInterval(() => {
+      if (initializeGSI()) clearInterval(interval);
+    }, 200);
+
+    return () => clearInterval(interval);
   }, []);
 
-  // Cargar sesión persistida
+  // 🔵 Cargar sesión persistida del localStorage
   useEffect(() => {
     const stored = localStorage.getItem("googleSession");
     if (!stored) return;
@@ -53,6 +73,7 @@ export default function App() {
     }
   }, []);
 
+  // 🔵 Obtener info del usuario Google
   async function fetchUserInfo(accessToken) {
     try {
       const res = await fetch("https://www.googleapis.com/oauth2/v3/userinfo", {
@@ -67,11 +88,16 @@ export default function App() {
     }
   }
 
+  // 🔵 Iniciar sesión
   function handleLogin() {
-    if (!tokenClientRef.current) return;
+    if (!tokenClientRef.current) {
+      console.error("Google aún no está listo.");
+      return;
+    }
     tokenClientRef.current.requestAccessToken();
   }
 
+  // 🔵 Cerrar sesión
   function handleLogout() {
     setToken(null);
     setUserInfo(null);
@@ -85,7 +111,8 @@ export default function App() {
   return (
     <div className="main-center">
       <div className="form-layout">
-        {/* Pestañas verticales */}
+
+        {/* Tabs laterales */}
         <div className="tab-vertical">
           <button
             className={`tab-btn ${vista === "acreditacion" ? "activo" : ""}`}
@@ -93,6 +120,7 @@ export default function App() {
           >
             Acreditación
           </button>
+
           <button
             className={`tab-btn ${vista === "hospedadores" ? "activo" : ""}`}
             onClick={() => setVista("hospedadores")}
@@ -101,9 +129,8 @@ export default function App() {
           </button>
         </div>
 
-        {/* Contenido principal */}
+        {/* Contenido */}
         <div className="form-content">
-          {/* Banner superior */}
           <div className="top-image-container">
             <img
               src="https://i.ibb.co/DDvSqcWW/concentracion-jovenes-04.png"
@@ -113,21 +140,22 @@ export default function App() {
 
           <h1 className="form-title">Acreditación Jóvenes</h1>
 
+          {/* FORMULARIOS */}
           {vista === "acreditacion" && (
             <AcreditacionForm
               token={token}
+              userInfo={userInfo}
               onLogin={handleLogin}
               onLogout={handleLogout}
-              userInfo={userInfo}
             />
           )}
 
           {vista === "hospedadores" && (
             <HospedadoresForm
               token={token}
+              userInfo={userInfo}
               onLogin={handleLogin}
               onLogout={handleLogout}
-              userInfo={userInfo}
             />
           )}
         </div>
