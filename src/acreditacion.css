@@ -685,3 +685,9 @@ input[type="datetime-local"]:hover::-webkit-calendar-picker-indicator {
   overflow-y: auto;
   border-radius: 12px;
 }
+
+/* ==== FIX: que el menú de react-select quede sobre el encabezado sticky ==== */
+.rs__menu,
+.react-select__menu {
+  z-index: 9999 !important;  /* hace que el dropdown se muestre por encima de la tabla */
+}
