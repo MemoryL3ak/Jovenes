@@ -11,14 +11,15 @@ export default function HospedadoresForm({ token, onLogin, onLogout, userInfo })
   const [filtroLocal, setFiltroLocal] = useState(null);
   const [loading, setLoading] = useState(false);
 
-  // Cargar hospedadores cuando haya token
+  // ==============================
+  // Cargar hospedadores
+  // ==============================
   useEffect(() => {
     if (!token) {
       setHospedadores([]);
       return;
     }
     loadHospedadores();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token]);
 
   async function loadHospedadores() {
@@ -30,17 +31,8 @@ export default function HospedadoresForm({ token, onLogin, onLogout, userInfo })
       const url = `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/${range}`;
 
       const res = await fetch(url, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+        headers: { Authorization: `Bearer ${token}` },
       });
-
-      if (!res.ok) {
-        const txt = await res.text();
-        console.error("Error al leer hospedadores:", res.status, txt);
-        setMensaje("No se pudieron cargar los hospedadores.");
-        return;
-      }
 
       const data = await res.json();
       const rows = data.values || [];
@@ -64,12 +56,16 @@ export default function HospedadoresForm({ token, onLogin, onLogout, userInfo })
     }
   }
 
-  // Opciones de Local para filtro
+  // ==============================
+  // Opciones Local
+  // ==============================
   const localOptions = Array.from(
     new Set(hospedadores.map((h) => h.local).filter(Boolean))
   ).map((local) => ({ value: local, label: local }));
 
-  // Filtro aplicado
+  // ==============================
+  // Filtros
+  // ==============================
   const hospedadoresFiltrados = hospedadores.filter((h) => {
     const matchNombre = filtroNombre
       ? h.nombre.toLowerCase().includes(filtroNombre.toLowerCase())
@@ -80,9 +76,12 @@ export default function HospedadoresForm({ token, onLogin, onLogout, userInfo })
     return matchNombre && matchLocal;
   });
 
+  // ==============================
+  // UI
+  // ==============================
   return (
     <div className="form-section">
-      {/* Cabecera + login, mismo estilo que antes */}
+      {/* Encabezado */}
       <div className="header-section">
         <p className="header-subtitle">
           Consulta el detalle de los hospedadores y sus visitas asignadas.
@@ -90,11 +89,7 @@ export default function HospedadoresForm({ token, onLogin, onLogout, userInfo })
 
         <div className="google-login-wrapper">
           {!token ? (
-            <button
-              type="button"
-              className="google-login-btn"
-              onClick={onLogin}
-            >
+            <button type="button" className="google-login-btn" onClick={onLogin}>
               <img
                 src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg"
                 alt="Google"
@@ -105,9 +100,7 @@ export default function HospedadoresForm({ token, onLogin, onLogout, userInfo })
           ) : (
             <div className="google-session-bar">
               <div className="google-session-info">
-                <span className="google-session-title">
-                  Sesión iniciada como
-                </span>
+                <span className="google-session-title">Sesión iniciada como</span>
                 <span className="google-session-email">
                   {userInfo?.email || "Usuario autenticado"}
                 </span>
@@ -134,6 +127,7 @@ export default function HospedadoresForm({ token, onLogin, onLogout, userInfo })
               className="filter-input"
             />
           </div>
+
           <div className="filter-group">
             <label>Filtrar por Local</label>
             <Select
@@ -148,42 +142,54 @@ export default function HospedadoresForm({ token, onLogin, onLogout, userInfo })
         </div>
       )}
 
-      {/* Tabla de Hospedadores */}
+      {/* Tabla hospedadores */}
       {token && (
         <div className="hospedadores-table-wrapper">
+
           {loading ? (
             <p>Cargando hospedadores...</p>
           ) : (
-            <table className="hospedadores-table">
-              <thead>
-                <tr>
-                  <th>Nombre</th>
-                  <th>Dirección</th>
-                  <th>N° Contacto</th>
-                  <th>Local</th>
-                  <th>Visitas Asignadas</th>
-                </tr>
-              </thead>
-              <tbody>
-                {hospedadoresFiltrados.length === 0 ? (
+            <div className="hospedadores-scroll">
+
+              <table className="hospedadores-table">
+                <thead>
                   <tr>
-                    <td colSpan={5} style={{ textAlign: "center" }}>
-                      No hay registros que coincidan con el filtro.
-                    </td>
+                    <th>Nombre</th>
+                    <th>Dirección</th>
+                    <th>N° Contacto</th>
+                    <th>Local</th>
+                    <th>Visitas Asignadas</th>
                   </tr>
-                ) : (
-                  hospedadoresFiltrados.map((h) => (
-                    <tr key={h.id}>
-                      <td>{h.nombre}</td>
-                      <td>{h.direccion}</td>
-                      <td>{h.contacto}</td>
-                      <td>{h.local}</td>
-                      <td>{h.visitasAsignadas}</td>
+                </thead>
+
+                <tbody>
+                  {hospedadoresFiltrados.length === 0 ? (
+                    <tr>
+                      <td colSpan={5} style={{ textAlign: "center" }}>
+                        No hay registros que coincidan con el filtro.
+                      </td>
                     </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
+                  ) : (
+                    hospedadoresFiltrados.map((h) => (
+                      <tr key={h.id}>
+                        <td>{h.nombre}</td>
+                        <td>{h.direccion}</td>
+                        <td>{h.contacto}</td>
+                        <td>{h.local}</td>
+
+                        {/* MULTILÍNEA con salto antes del número */}
+                        <td className="visitas-multilinea">
+                          {h.visitasAsignadas
+                            ?.replace(/(\d+\.)/g, "\n$1")
+                            .trim()}
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+
+            </div>
           )}
         </div>
       )}

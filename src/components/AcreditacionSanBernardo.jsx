@@ -30,7 +30,7 @@ export default function AcreditacionSanBernardo({ token, userInfo, onLogin, onLo
   const [filtroNombre, setFiltroNombre] = useState("");
   const [filtroSeccion, setFiltroSeccion] = useState("");
 
-  // Mostrar filas progresivamente
+  // Cantidad inicial visible
   const [visibleCount, setVisibleCount] = useState(10);
 
   // ================================
@@ -72,7 +72,7 @@ export default function AcreditacionSanBernardo({ token, userInfo, onLogin, onLo
         }))
       );
 
-      setVisibleCount(10); // reset vista inicial
+      setVisibleCount(10); // reset carga inicial
 
     } catch (err) {
       console.error(err);
@@ -89,7 +89,6 @@ export default function AcreditacionSanBernardo({ token, userInfo, onLogin, onLo
       r.seccion.toLowerCase().includes(filtroSeccion.toLowerCase())
     );
   }, [registros, filtroNombre, filtroSeccion]);
-
 
   // ================================
   // Guardado automático
@@ -120,7 +119,7 @@ export default function AcreditacionSanBernardo({ token, userInfo, onLogin, onLo
       });
 
       setMensaje("✔ Registro actualizado");
-      loadRegistros(); // refresca la tabla
+      loadRegistros();
 
     } catch (e) {
       console.error(e);
@@ -180,7 +179,7 @@ export default function AcreditacionSanBernardo({ token, userInfo, onLogin, onLo
         />
       </div>
 
-      {/* TABLA CON SCROLL */}
+      {/* TABLA CON SCROLL INFINITO */}
       <div
         className="sanb-table-wrapper"
         onScroll={(e) => {
@@ -188,7 +187,7 @@ export default function AcreditacionSanBernardo({ token, userInfo, onLogin, onLo
           const bottom = Math.ceil(el.scrollTop + el.clientHeight) >= el.scrollHeight;
 
           if (bottom) {
-            setVisibleCount((prev) => prev + 10); // cargar más
+            setVisibleCount((prev) => prev + 10);
           }
         }}
       >
