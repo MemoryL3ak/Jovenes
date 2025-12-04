@@ -469,3 +469,40 @@ input[type="datetime-local"]:hover::-webkit-calendar-picker-indicator {
 .logout-btn:hover {
   background-color: #c0392b;
 }
+
+
+.toast-message {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  background: #e6f7e8;
+  color: #117a2d;
+  border-left: 5px solid #21b354;
+  padding: 12px 18px;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 600;
+  z-index: 9999;
+  box-shadow: 0px 4px 12px rgba(0, 0, 0, 0.18);
+
+  animation: slideInRight 0.35s ease-out,
+             fadeOut 0.35s ease-out 2.7s forwards;
+}
+
+@keyframes slideInRight {
+  from {
+    opacity: 0;
+    transform: translateX(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes fadeOut {
+  to {
+    opacity: 0;
+    transform: translateX(30px);
+  }
+}

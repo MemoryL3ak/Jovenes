@@ -17,14 +17,10 @@ export default function AcreditacionForm({ token, onLogin, onLogout, userInfo })
   const [loading, setLoading] = useState(false);
   const [mensaje, setMensaje] = useState("");
 
-  const [selectedNombreEncargado, setSelectedNombreEncargado] =
-    useState(null);
+  const [selectedNombreEncargado, setSelectedNombreEncargado] = useState(null);
   const [selectedIglesia, setSelectedIglesia] = useState(null);
 
-  // Registros leídos desde la hoja "Acreditación"
   const [registros, setRegistros] = useState([]);
-
-  // Registro actualmente seleccionado (para saber qué fila actualizar)
   const [registroSeleccionado, setRegistroSeleccionado] = useState(null);
 
   const [form, setForm] = useState({
@@ -37,20 +33,26 @@ export default function AcreditacionForm({ token, onLogin, onLogout, userInfo })
     contactoHospedador: "",
     direccion: "",
     local: "",
-    acreditaVisita: acreditaOptions[1], // No
+    acreditaVisita: acreditaOptions[1],
     fechaHora: "",
     observaciones: "",
   });
 
-  // Único obligatorio: ¿Se acredita visita?
   const camposObligatoriosOk = !!(
     form.acreditaVisita && form.acreditaVisita.value
   );
 
-  // Cuando cambia el token
+  /* 🔵 Toast desaparece automáticamente */
+  useEffect(() => {
+    if (mensaje) {
+      const timeout = setTimeout(() => setMensaje(""), 3000);
+      return () => clearTimeout(timeout);
+    }
+  }, [mensaje]);
+
+  /* 🔵 Cargar registros al recibir token */
   useEffect(() => {
     if (!token) {
-      // Si no hay token, limpiamos todo
       setRegistros([]);
       setSelectedIglesia(null);
       setSelectedNombreEncargado(null);
@@ -59,10 +61,9 @@ export default function AcreditacionForm({ token, onLogin, onLogout, userInfo })
       return;
     }
     loadRegistros();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token]);
 
-  // Autollenar fecha/hora acreditación cuando pasa a "Sí"
+  /* 🔵 Autollenar fecha/hora acreditación */
   useEffect(() => {
     if (form.acreditaVisita?.value === "Sí") {
       setForm((f) => ({ ...f, fechaHora: ahoraSantiago() }));
@@ -71,26 +72,24 @@ export default function AcreditacionForm({ token, onLogin, onLogout, userInfo })
     }
   }, [form.acreditaVisita?.value]);
 
-  // Opciones dinámicas de Iglesia
+  /* 🔵 Opciones dinámicas de iglesia */
   const iglesiaOptions = useMemo(() => {
     const set = new Set(
-      registros.map((r) => r.iglesia).filter((ig) => ig && ig.trim())
+      registros.map((r) => r.iglesia).filter((x) => x && x.trim())
     );
     return Array.from(set).map((ig) => ({ value: ig, label: ig }));
   }, [registros]);
 
-  // Opciones dinámicas de Nombre, filtrando por iglesia si corresponde
+  /* 🔵 Opciones dinámicas de nombre */
   const nombreEncargadoOptions = useMemo(() => {
     let data = registros;
     if (selectedIglesia) {
       data = data.filter((r) => r.iglesia === selectedIglesia.value);
     }
-
-    const set = new Set(data.map((r) => r.nombre).filter((n) => n && n.trim()));
+    const set = new Set(data.map((r) => r.nombre).filter((x) => x && x.trim()));
     return Array.from(set).map((n) => ({ value: n, label: n }));
   }, [registros, selectedIglesia]);
 
-  // Carga registros y guarda número de fila (rowNumber)
   async function loadRegistros() {
     if (!token) return;
 
@@ -99,15 +98,12 @@ export default function AcreditacionForm({ token, onLogin, onLogout, userInfo })
       const url = `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/${range}`;
 
       const res = await fetch(url, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+        headers: { Authorization: `Bearer ${token}` },
       });
 
       if (!res.ok) {
-        const txt = await res.text();
-        console.error("Error al leer registros:", res.status, txt);
-        setMensaje("No se pudieron cargar los registros de acreditación.");
+        console.error("Error:", await res.text());
+        setMensaje("No se pudieron cargar los registros.");
         return;
       }
 
@@ -116,7 +112,7 @@ export default function AcreditacionForm({ token, onLogin, onLogout, userInfo })
 
       const mapped = rows.map((row, idx) => ({
         id: idx,
-        rowNumber: idx + 2, // fila real en la hoja (parte en A2)
+        rowNumber: idx + 2,
         nombre: row[0] || "",
         iglesia: row[1] || "",
         contacto: row[2] || "",
@@ -134,24 +130,19 @@ export default function AcreditacionForm({ token, onLogin, onLogout, userInfo })
       setRegistros(mapped);
       setMensaje("");
     } catch (err) {
-      console.error("Error al cargar registros:", err);
-      setMensaje("Ocurrió un error al cargar los registros de acreditación.");
+      console.error(err);
+      setMensaje("Error al cargar registros.");
     }
   }
 
-  // Solo para campos editables: fechaHoraRetiro y observaciones
   function handleChange(e) {
     const { name, value } = e.target;
     setForm((prev) => ({ ...prev, [name]: value }));
   }
 
-  // Cambio de iglesia en el filtro
   function handleChangeIglesia(opt) {
     setSelectedIglesia(opt);
-
-    if (!opt) {
-      return;
-    }
+    if (!opt) return;
 
     const iglesia = opt.value;
 
@@ -161,16 +152,15 @@ export default function AcreditacionForm({ token, onLogin, onLogout, userInfo })
         (r) => r.nombre === nombre && r.iglesia === iglesia
       );
       if (row) {
-        llenarFormularioDesdeRegistro(row);
         setRegistroSeleccionado(row);
+        llenarFormularioDesdeRegistro(row);
         return;
       }
     }
 
-    setForm((prev) => ({ ...prev, iglesia }));
+    setForm((f) => ({ ...f, iglesia }));
   }
 
-  // Cambio de nombre en el filtro
   function handleChangeNombreEncargado(opt) {
     setSelectedNombreEncargado(opt);
 
@@ -180,22 +170,21 @@ export default function AcreditacionForm({ token, onLogin, onLogout, userInfo })
       return;
     }
 
-    const nombre = opt.value;
     let row = null;
 
     if (selectedIglesia) {
       row = registros.find(
-        (r) => r.nombre === nombre && r.iglesia === selectedIglesia.value
+        (r) => r.nombre === opt.value && r.iglesia === selectedIglesia.value
       );
     }
 
     if (!row) {
-      row = registros.find((r) => r.nombre === nombre);
+      row = registros.find((r) => r.nombre === opt.value);
     }
 
     if (row) {
-      llenarFormularioDesdeRegistro(row);
       setRegistroSeleccionado(row);
+      llenarFormularioDesdeRegistro(row);
 
       const igOpt = iglesiaOptions.find((o) => o.value === row.iglesia);
       setSelectedIglesia(igOpt || null);
@@ -211,15 +200,15 @@ export default function AcreditacionForm({ token, onLogin, onLogout, userInfo })
       nombre: row.nombre,
       iglesia: row.iglesia,
       contacto: row.contacto,
-      tipoMovilizacion: row.tipoMovilizacion || "",
-      fechaHoraRetiro: row.fechaHoraRetiro || "",
-      hospedador: row.hospedador || "",
-      contactoHospedador: row.contactoHospedador || "",
-      direccion: row.direccion || "",
-      local: row.local || "",
+      tipoMovilizacion: row.tipoMovilizacion,
+      fechaHoraRetiro: row.fechaHoraRetiro,
+      hospedador: row.hospedador,
+      contactoHospedador: row.contactoHospedador,
+      direccion: row.direccion,
+      local: row.local,
       acreditaVisita: acreditaOpt,
-      fechaHora: row.fechaHora || "",
-      observaciones: row.observaciones || "",
+      fechaHora: row.fechaHora,
+      observaciones: row.observaciones,
     });
   }
 
@@ -227,21 +216,15 @@ export default function AcreditacionForm({ token, onLogin, onLogout, userInfo })
     e.preventDefault();
 
     if (!token) {
-      setMensaje(
-        "Debes iniciar sesión con Google antes de guardar."
-      );
+      setMensaje("Debes iniciar sesión con Google.");
       return;
     }
     if (!registroSeleccionado) {
-      setMensaje(
-        "Debes seleccionar un registro desde los filtros antes de guardar."
-      );
+      setMensaje("Debes seleccionar un registro antes de guardar.");
       return;
     }
     if (!camposObligatoriosOk) {
-      setMensaje(
-        "Debes seleccionar una opción en '¿Se Acredita Visita?' antes de guardar."
-      );
+      setMensaje("Debes seleccionar si se acredita visita.");
       return;
     }
 
@@ -249,9 +232,10 @@ export default function AcreditacionForm({ token, onLogin, onLogout, userInfo })
     setMensaje("");
 
     try {
-      // Tomamos el registro original y actualizamos solo los campos requeridos
       const updatedRow = {
         ...registroSeleccionado,
+        contacto: form.contacto,
+        tipoMovilizacion: form.tipoMovilizacion,
         fechaHoraRetiro: form.fechaHoraRetiro,
         acreditaVisita: form.acreditaVisita?.value || "No",
         fechaHora: form.fechaHora,
@@ -264,8 +248,8 @@ export default function AcreditacionForm({ token, onLogin, onLogout, userInfo })
         [
           updatedRow.nombre,
           updatedRow.iglesia,
-          updatedRow.contacto,
-          updatedRow.tipoMovilizacion || "",
+          updatedRow.contactto,
+          updatedRow.tipoMovilizacion,
           updatedRow.fechaHoraRetiro,
           updatedRow.hospedador,
           updatedRow.contactoHospedador,
@@ -277,9 +261,7 @@ export default function AcreditacionForm({ token, onLogin, onLogout, userInfo })
         ],
       ];
 
-      const range = encodeURIComponent(
-        `${SHEET_NAME}!A${rowNumber}:L${rowNumber}`
-      );
+      const range = encodeURIComponent(`${SHEET_NAME}!A${rowNumber}:L${rowNumber}`);
       const url = `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/${range}?valueInputOption=USER_ENTERED`;
 
       const res = await fetch(url, {
@@ -292,29 +274,26 @@ export default function AcreditacionForm({ token, onLogin, onLogout, userInfo })
       });
 
       if (!res.ok) {
-        const txt = await res.text();
-        throw new Error(`Error al guardar: ${res.status} ${txt}`);
+        console.error(await res.text());
+        throw new Error();
       }
 
-      // Actualizamos también en memoria para que los filtros queden al día
       setRegistros((prev) =>
         prev.map((r) => (r.rowNumber === rowNumber ? updatedRow : r))
       );
       setRegistroSeleccionado(updatedRow);
 
-      setMensaje("✅ Registro actualizado correctamente.");
+      setMensaje("✔ Cambios guardados correctamente.");
     } catch (err) {
       console.error(err);
-      setMensaje(
-        "Ocurrió un error al actualizar. Revisa la consola, el CLIENT_ID y el SHEET_ID."
-      );
+      setMensaje("❌ Error al guardar los cambios.");
     } finally {
       setLoading(false);
     }
   }
 
-  function limpiarFormulario(resetSeleccion = true) {
-    if (resetSeleccion) {
+  function limpiarFormulario(reset = true) {
+    if (reset) {
       setSelectedNombreEncargado(null);
       setSelectedIglesia(null);
     }
@@ -345,11 +324,7 @@ export default function AcreditacionForm({ token, onLogin, onLogout, userInfo })
 
         <div className="google-login-wrapper">
           {!token ? (
-            <button
-              type="button"
-              className="google-login-btn"
-              onClick={onLogin}
-            >
+            <button type="button" className="google-login-btn" onClick={onLogin}>
               <img
                 src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg"
                 alt="Google"
@@ -360,9 +335,7 @@ export default function AcreditacionForm({ token, onLogin, onLogout, userInfo })
           ) : (
             <div className="google-session-bar">
               <div className="google-session-info">
-                <span className="google-session-title">
-                  Sesión iniciada como
-                </span>
+                <span className="google-session-title">Sesión iniciada como</span>
                 <span className="google-session-email">
                   {userInfo?.email || "Usuario autenticado"}
                 </span>
@@ -388,6 +361,7 @@ export default function AcreditacionForm({ token, onLogin, onLogout, userInfo })
             isClearable
           />
         </div>
+
         <div className="filter-group">
           <label>Buscar por Iglesia</label>
           <Select
@@ -403,8 +377,10 @@ export default function AcreditacionForm({ token, onLogin, onLogout, userInfo })
       {/* FORMULARIO PRINCIPAL */}
       <form onSubmit={handleSubmit}>
         <div className="form-row two-columns">
+
           {/* COLUMNA 1 */}
           <div className="form-column">
+
             <div className="form-group">
               <label>Nombre</label>
               <input name="nombre" value={form.nombre} type="text" readOnly />
@@ -416,7 +392,7 @@ export default function AcreditacionForm({ token, onLogin, onLogout, userInfo })
                 name="contacto"
                 value={form.contacto}
                 type="text"
-                readOnly
+                onChange={handleChange}
               />
             </div>
 
@@ -432,46 +408,31 @@ export default function AcreditacionForm({ token, onLogin, onLogout, userInfo })
 
             <div className="form-group">
               <label>Hospedador</label>
-              <input
-                name="hospedador"
-                value={form.hospedador}
-                type="text"
-                readOnly
-              />
+              <input name="hospedador" value={form.hospedador} type="text" readOnly />
             </div>
 
             <div className="form-group">
               <label>Dirección</label>
-              <input
-                name="direccion"
-                value={form.direccion}
-                type="text"
-                readOnly
-              />
+              <input name="direccion" value={form.direccion} type="text" readOnly />
             </div>
 
             <div className="form-group">
               <label>¿Se Acredita Visita?</label>
               <Select
                 value={form.acreditaVisita}
-                onChange={(opt) =>
-                  setForm((prev) => ({ ...prev, acreditaVisita: opt }))
-                }
+                onChange={(opt) => setForm((p) => ({ ...p, acreditaVisita: opt }))}
                 options={acreditaOptions}
               />
             </div>
+
           </div>
 
           {/* COLUMNA 2 */}
           <div className="form-column">
+
             <div className="form-group">
               <label>Iglesia</label>
-              <input
-                name="iglesia"
-                value={form.iglesia}
-                type="text"
-                readOnly
-              />
+              <input name="iglesia" value={form.iglesia} type="text" readOnly />
             </div>
 
             <div className="form-group">
@@ -480,12 +441,12 @@ export default function AcreditacionForm({ token, onLogin, onLogout, userInfo })
                 name="tipoMovilizacion"
                 value={form.tipoMovilizacion}
                 type="text"
-                readOnly
+                onChange={handleChange}
               />
             </div>
 
             <div className="form-group">
-              <label>N°Contacto Hospedador</label>
+              <label>N° Contacto Hospedador</label>
               <input
                 name="contactoHospedador"
                 value={form.contactoHospedador}
@@ -501,16 +462,11 @@ export default function AcreditacionForm({ token, onLogin, onLogout, userInfo })
 
             <div className="form-group">
               <label>Fecha y Hora Acreditación</label>
-              <input
-                name="fechaHora"
-                value={form.fechaHora}
-                type="text"
-                readOnly
-              />
+              <input name="fechaHora" value={form.fechaHora} type="text" readOnly />
             </div>
 
             <div className="form-group">
-              <label>Observaciones y/o Modificaciones</label>
+              <label>Observaciones</label>
               <textarea
                 name="observaciones"
                 value={form.observaciones}
@@ -518,10 +474,11 @@ export default function AcreditacionForm({ token, onLogin, onLogout, userInfo })
                 rows={4}
               />
             </div>
+
           </div>
         </div>
 
-        {/* Botones */}
+        {/* BOTONES */}
         <div className="form-actions">
           <button
             type="submit"
@@ -531,9 +488,15 @@ export default function AcreditacionForm({ token, onLogin, onLogout, userInfo })
             {loading ? "Guardando..." : "Guardar Cambios"}
           </button>
         </div>
-
-        {mensaje && <div className="form-message">{mensaje}</div>}
       </form>
+
+      {/* 🔵 TOAST FLOTANTE */}
+      {mensaje && (
+        <div className="toast-message">
+          {mensaje}
+        </div>
+      )}
+
     </div>
   );
 }
