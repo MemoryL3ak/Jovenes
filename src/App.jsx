@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import AcreditacionForm from "./components/AcreditacionForm";
 import HospedadoresForm from "./components/HospedadoresForm";
+import AcreditacionSanBernardo from "./components/AcreditacionSanBernardo"; // 👈 NUEVO
 import "./acreditacion.css";
 
 const CLIENT_ID =
@@ -29,7 +30,9 @@ export default function App() {
             if (resp?.access_token) {
               const accessToken = resp.access_token;
 
-              const expiresAt = Date.now() + 120 * 60 * 1000; // 2 horas
+           const expiresAt = Date.now() + 12 * 60 * 60 * 1000;
+
+              
               localStorage.setItem(
                 "googleSession",
                 JSON.stringify({ token: accessToken, expiresAt })
@@ -47,10 +50,10 @@ export default function App() {
       return false;
     }
 
-    // 1. Intento inmediato
+    // Intento inmediato
     if (initializeGSI()) return;
 
-    // 2. Intento cada 200ms hasta que el script cargue
+    // Intento cada 200ms
     const interval = setInterval(() => {
       if (initializeGSI()) clearInterval(interval);
     }, 200);
@@ -58,7 +61,7 @@ export default function App() {
     return () => clearInterval(interval);
   }, []);
 
-  // 🔵 Cargar sesión persistida del localStorage
+  // 🔵 Cargar sesión persistida
   useEffect(() => {
     const stored = localStorage.getItem("googleSession");
     if (!stored) return;
@@ -127,6 +130,14 @@ export default function App() {
           >
             Hospedadores
           </button>
+
+          {/* 👇 NUEVA TERCERA PESTAÑA */}
+          <button
+            className={`tab-btn ${vista === "sanbernardo" ? "activo" : ""}`}
+            onClick={() => setVista("sanbernardo")}
+          >
+            Acreditación San Bernardo
+          </button>
         </div>
 
         {/* Contenido */}
@@ -158,7 +169,18 @@ export default function App() {
               onLogout={handleLogout}
             />
           )}
+
+          {/* 👇 NUEVO FORMULARIO */}
+          {vista === "sanbernardo" && (
+            <AcreditacionSanBernardo
+              token={token}
+              userInfo={userInfo}
+              onLogin={handleLogin}
+              onLogout={handleLogout}
+            />
+          )}
         </div>
+
       </div>
     </div>
   );

@@ -506,3 +506,139 @@ input[type="datetime-local"]:hover::-webkit-calendar-picker-indicator {
     transform: translateX(30px);
   }
 }
+
+
+/* ===========================================
+   TABLA — ESTILO IGUAL A HOSPEDADORES
+=========================================== */
+
+.sanb-table-wrapper {
+  margin-top: 16px;
+  border-radius: 12px;
+  border: 1px solid #e5e7eb;
+  background: #ffffff;
+  overflow: hidden;
+}
+
+.sanb-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+  color: #111827;
+}
+
+.sanb-table thead {
+  background: #f9fafb;
+}
+
+.sanb-table th,
+.sanb-table td {
+  padding: 10px 12px;
+  border-bottom: 1px solid #e5e7eb;
+  font-size: 13px;
+}
+
+.sanb-table th {
+  font-weight: 600;
+}
+
+.sanb-table tr:last-child td {
+  border-bottom: none;
+}
+
+.sanb-select-container {
+  min-width: 95px;
+}
+
+.obs-input {
+  width: 100%;
+  padding: 7px 10px;
+  border-radius: 8px;
+  border: 1px solid #d1d5db;
+  font-size: 13px;
+  font-family: "DM Sans", sans-serif;
+}
+
+/* Small select (react-select) */
+.sanb-select-container .react-select__control {
+  min-height: 32px !important;
+  height: 32px !important;
+  border-radius: 8px !important;
+  font-size: 13px !important;
+}
+
+.sanb-select-container .react-select__value-container {
+  padding: 0 6px !important;
+}
+
+.sanb-select-container .react-select__single-value {
+  font-size: 13px !important;
+}
+
+/* Filas hover */
+.sanb-table tr:hover {
+  background: #fafafa;
+}
+
+/* Filtros */
+.sanb-filters-row {
+  display: flex;
+  gap: 16px;
+  margin: 12px 0;
+}
+
+.sanb-filter-input {
+  flex: 1;
+  padding: 9px 10px;
+  border-radius: 10px;
+  border: 1px solid #d1d5db;
+  font-size: 14px;
+  font-family: "DM Sans", sans-serif;
+}
+
+
+/* ===============================================
+   FIX REAL — Mover solo el texto de los encabezados
+   sin mover columnas, sin romper bordes
+=============================================== */
+/* Ajuste final de encabezados — Alineación perfecta */
+.sanb-table th:nth-child(1) {
+  text-indent: -55px !important; /* Nombre */
+}
+
+.sanb-table th:nth-child(2) {
+  text-indent: -45px !important; /* Sección */
+}
+
+
+/* ======================================================
+   SCROLL PARA TABLA SAN BERNARDO — Mostrar 10 filas y scroll
+====================================================== */
+
+.sanb-table-wrapper {
+  max-height: 420px;       /* Ajusta la altura visible */
+  overflow-y: auto;        /* Activa scroll vertical */
+  overflow-x: hidden;
+  border-radius: 12px;
+  border: 1px solid #e5e7eb;
+  background: #ffffff;
+}
+
+/* Scrollbar elegante */
+.sanb-table-wrapper::-webkit-scrollbar {
+  width: 8px;
+}
+
+.sanb-table-wrapper::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 10px;
+}
+
+.sanb-table-wrapper::-webkit-scrollbar-thumb {
+  background: #c5c5c5;
+  border-radius: 10px;
+}
+
+.sanb-table-wrapper::-webkit-scrollbar-thumb:hover {
+  background: #a9a9a9;
+}
